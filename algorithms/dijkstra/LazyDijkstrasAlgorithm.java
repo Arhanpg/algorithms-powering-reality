@@ -1,88 +1,125 @@
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.PriorityQueue;
+import java.util.Set;
 
 class Graph {
 
-    // Represents one weighted edge from a source vertex to a destination vertex.
-    static class Edge {
+    class Edge {
         int wt;
         int dest;
 
-        Edge(int wt, int dest) {
+        public Edge(int wt, int dest) {
             this.wt = wt;
             this.dest = dest;
         }
     }
 
-    // Adjacency-list representation of the graph.
-    private final Map<Integer, ArrayList<Edge>> graph = new HashMap<>();
+    // Adjacency-list representation of the weighted directed graph.
+    Map<Integer, ArrayList<Edge>> m1;
 
-    // Creates a vertex if it does not already exist.
-    public void createVertex(int vertex) {
-        graph.putIfAbsent(vertex, new ArrayList<>());
+    public Graph() {
+        this.m1 = new HashMap<>();
     }
 
-    // Adds a directed weighted edge: src -> dest.
-    public void addEdge(int src, int dest, int wt) {
-        createVertex(src);
-        createVertex(dest);
-        graph.get(src).add(new Edge(wt, dest));
+    public void create_vertex(int vertex) {
+        m1.putIfAbsent(vertex, new ArrayList<>());
     }
 
-    // Lazy Dijkstra:
-    // Instead of decreasing a key already present in the priority queue,
-    // we insert the improved distance as a new entry. Old entries are
-    // ignored when they become stale.
-    public void lazyDijkstra(int start, int end) {
-        if (!graph.containsKey(start) || !graph.containsKey(end)) {
-            System.out.println("Invalid destination or source");
+    // Adds a directed edge: src -> dest with the given weight.
+    public void add_node(int src, int dest, int wt) {
+        create_vertex(src);
+        create_vertex(dest);
+
+        ArrayList<Edge> arr = m1.get(src);
+        arr.add(new Edge(wt, dest));
+        m1.put(src, arr);
+
+        // No reverse edge is added because this graph is directed.
+    }
+
+    public void Lazy_Dijkastra(int start, int end) {
+
+        if (!m1.containsKey(end)) {
+            System.out.println("Invalid dest");
             return;
         }
 
-        Map<Integer, Integer> optimalDist = new HashMap<>();
-        for (int vertex : graph.keySet()) {
-            optimalDist.put(vertex, Integer.MAX_VALUE);
+        Map<Integer, Integer> optimal_dist = new HashMap<>();
+
+        // Stores the previous vertex used to obtain the shortest path.
+        Map<Integer, Integer> optimal_path = new HashMap<>();
+
+        Set<Integer> keySet = m1.keySet();
+
+        for (int vertex : keySet) {
+            optimal_dist.put(vertex, Integer.MAX_VALUE);
         }
 
-        optimalDist.put(start, 0);
+        optimal_dist.put(start, 0);
 
-        // int[] = {vertex, distance}
-        // IMPORTANT: the queue must be ordered by distance, not vertex.
-        PriorityQueue<int[]> pq =
+        // Each PQ element is {vertex, current distance}.
+        // Dijkstra must always process the smallest distance first.
+        PriorityQueue<int[]> PQ =
                 new PriorityQueue<>(Comparator.comparingInt(a -> a[1]));
 
-        pq.offer(new int[]{start, 0});
+        PQ.offer(new int[]{start, 0});
 
-        while (!pq.isEmpty()) {
-            int[] current = pq.poll();
-            int currNode = current[0];
-            int currDist = current[1];
+        while (!PQ.isEmpty()) {
 
-            // Ignore stale entries left in the queue by earlier relaxations.
-            if (currDist != optimalDist.get(currNode)) {
+            int[] curr = PQ.poll();
+
+            int curr_node = curr[0];
+            int curr_dist = curr[1];
+
+            // Ignore stale entries created by the lazy approach.
+            if (curr_dist != optimal_dist.get(curr_node)) {
                 continue;
             }
 
-            for (Edge edge : graph.get(currNode)) {
-                int newDist = currDist + edge.wt;
+            ArrayList<Edge> arr = m1.get(curr_node);
 
-                // Relax the edge if a shorter path has been found.
-                if (newDist < optimalDist.get(edge.dest)) {
-                    optimalDist.put(edge.dest, newDist);
-                    pq.offer(new int[]{edge.dest, newDist});
+            for (Edge eg : arr) {
+
+                int new_dist = curr_dist + eg.wt;
+
+                // Relax the edge if a shorter distance is found.
+                if (new_dist < optimal_dist.get(eg.dest)) {
+
+                    optimal_dist.put(eg.dest, new_dist);
+
+                    // Store the predecessor so the final path can be rebuilt.
+                    optimal_path.put(eg.dest, curr_node);
+
+                    PQ.offer(new int[]{eg.dest, new_dist});
                 }
             }
         }
 
-        if (optimalDist.get(end) == Integer.MAX_VALUE) {
+        if (optimal_dist.get(end) == Integer.MAX_VALUE) {
             System.out.println("Node is unreachable");
             return;
         }
 
-        System.out.println("Optimal dist " + optimalDist.get(end));
+        System.out.print("Optimal dist " + optimal_dist.get(end) + " ");
+
+        // Reconstruct the path by following predecessors backwards.
+        ArrayList<Integer> arr = new ArrayList<>();
+        Integer curr = end;
+
+        while (curr != null) {
+            arr.add(curr);
+            curr = optimal_path.get(curr);
+        }
+
+        // The path was collected from destination to source,
+        // so reverse it before printing.
+        Collections.reverse(arr);
+
+        System.out.println("Optimal path " + arr);
     }
 }
 
@@ -90,17 +127,17 @@ public class LazyDijkstrasAlgorithm {
 
     public static void main(String[] args) {
 
-        Graph graph = new Graph();
+        Graph G1 = new Graph();
 
-        graph.addEdge(10, 1, 2);
-        graph.addEdge(1, 2, 5);
-        graph.addEdge(1, 3, 3);
-        graph.addEdge(10, 2, 3);
-        graph.addEdge(2, 4, 4);
-        graph.addEdge(3, 5, 6);
+        G1.add_node(10, 1, 2);
+        G1.add_node(1, 2, 5);
+        G1.add_node(1, 3, 3);
+        G1.add_node(10, 2, 3);
+        G1.add_node(2, 4, 4);
+        G1.add_node(3, 5, 6);
 
-        graph.lazyDijkstra(10, 4);
-        graph.lazyDijkstra(10, 5);
-        graph.lazyDijkstra(10, 9);
+        G1.Lazy_Dijkastra(10, 4);
+        G1.Lazy_Dijkastra(10, 5);
+        G1.Lazy_Dijkastra(10, 9);
     }
 }
